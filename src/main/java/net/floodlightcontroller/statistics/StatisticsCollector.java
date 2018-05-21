@@ -15,10 +15,7 @@ import net.floodlightcontroller.threadpool.IThreadPoolService;
 import org.projectfloodlight.openflow.protocol.*;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.ver13.OFMeterSerializerVer13;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.types.OFPort;
-import org.projectfloodlight.openflow.types.TableId;
-import org.projectfloodlight.openflow.types.U64;
+import org.projectfloodlight.openflow.types.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +36,8 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	
 	private static int portStatsInterval = 10; /* could be set by REST API, so not final */
 	private static ScheduledFuture<?> portStatsCollector;
+	private static int flowStatsInterval = 10;
+	private static ScheduledFuture<?> flowStatsCollector;
 
 	private static final long BITS_PER_BYTE = 8;
 	private static final long MILLIS_PER_SEC = 1000;
@@ -161,6 +160,26 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 
 		}
 
+	}
+
+	protected class FlowStatsCollector implements Runnable {
+
+		@Override
+		public void run() {
+			Map<DatapathId, List<OFStatsReply>> replies = getSwitchStatistics(switchService.getAllSwitchDpids(), OFStatsType.FLOW);
+			for (Entry<DatapathId, List<OFStatsReply>> e : replies.entrySet()) {
+				for (OFStatsReply r : e.getValue()) {
+					OFFlowStatsReply fsr = (OFFlowStatsReply) r;
+					for (OFFlowStatsEntry fse : fsr.getEntries()) {
+						try {
+							//TODO: get a set value object.
+						} catch (Exception exp) {
+							exp.printStackTrace();
+						}
+					}
+				}
+			}
+		}
 	}
 
 	/**
@@ -297,6 +316,7 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	 */
 	private void startStatisticsCollection() {
 		portStatsCollector = threadPoolService.getScheduledExecutor().scheduleAtFixedRate(new PortStatsCollector(), portStatsInterval, portStatsInterval, TimeUnit.SECONDS);
+		flowStatsCollector = threadPoolService.getScheduledExecutor().scheduleAtFixedRate(new FlowStatsCollector(), flowStatsInterval, flowStatsInterval, TimeUnit.SECONDS);
 		tentativePortStats.clear(); /* must clear out, otherwise might have huge BW result if present and wait a long time before re-enabling stats */
 		log.warn("Statistics collection thread(s) started");
 	}
@@ -307,6 +327,8 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 	private void stopStatisticsCollection() {
 		if (!portStatsCollector.cancel(false)) {
 			log.error("Could not cancel port stats thread");
+		} else if (!flowStatsCollector.cancel(false)) {
+			log.error("Could not cancel flow stats thread");
 		} else {
 			log.warn("Statistics collection thread(s) stopped");
 		}
@@ -383,10 +405,17 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 			switch (statsType) {
 			case FLOW:
 				match = sw.getOFFactory().buildMatch().build();
-				req = sw.getOFFactory().buildFlowStatsRequest()
+				req = sw.getOFFactory().getVersion().compareTo(OFVersion.OF_10) == 0 ?
+						sw.getOFFactory().buildFlowStatsRequest()
 						.setMatch(match)
 						.setOutPort(OFPort.ANY)
 						.setTableId(TableId.ALL)
+						.build() :
+						sw.getOFFactory().buildFlowStatsRequest()
+						.setMatch(match)
+						.setOutPort(OFPort.ANY)
+						.setTableId(TableId.ALL)
+						.setOutGroup(OFGroup.ANY)
 						.build();
 				break;
 			case AGGREGATE:
