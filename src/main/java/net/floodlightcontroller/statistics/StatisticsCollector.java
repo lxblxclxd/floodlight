@@ -49,7 +49,9 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
     private static final HashMap<NodePortTuple, SwitchPortBandwidth> portStats = new HashMap<NodePortTuple, SwitchPortBandwidth>();
     private static final HashMap<NodePortTuple, SwitchPortBandwidth> tentativePortStats = new HashMap<NodePortTuple, SwitchPortBandwidth>();
 
-    private static final List<SwitchFlowStatistics> flowStats = new ArrayList<>();
+    private static Integer FLOWSTATS_DIRECTION = 0;
+    private static final List<SwitchFlowStatistics> flowStats_0 = new ArrayList<>();
+    private static final List<SwitchFlowStatistics> flowStats_1 = new ArrayList<>();
 
     /**
      * Run periodically to collect all port statistics. This only collects
@@ -184,7 +186,12 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
                             log.info("BYTECOUNT:\t" + bc.toString());
                             log.info("DURATIONSEC:\t" + String.valueOf(ds));
                             sfs = SwitchFlowStatistics.of(e.getKey(), pc, bc, ds);
-                            flowStats.add(sfs);
+
+                            if(FLOWSTATS_DIRECTION.equals(1))
+                                flowStats_1.add(sfs);
+                            else
+                                flowStats_0.add(sfs);
+
                         } catch (Exception exp) {
                             exp.printStackTrace();
                         }
@@ -266,7 +273,6 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
         if (config.containsKey(ENABLED_STR)) {
             try {
                 isEnabled = Boolean.parseBoolean(config.get(ENABLED_STR).trim());
-                isEnabled = true;
             } catch (Exception e) {
                 log.error("Could not parse '{}'. Using default of {}", ENABLED_STR, isEnabled);
             }
@@ -309,7 +315,17 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 
     @Override
     public List<SwitchFlowStatistics> getFlowStatistics() {
-        return Collections.unmodifiableList(flowStats);
+        List<SwitchFlowStatistics> copy = new ArrayList<>();
+        if(FLOWSTATS_DIRECTION.equals(1)) {
+            copy.addAll(flowStats_1);
+            flowStats_1.clear();
+        }
+        else {
+            copy.addAll(flowStats_0);
+            flowStats_0.clear();
+        }
+        FLOWSTATS_DIRECTION = 1 - FLOWSTATS_DIRECTION;
+        return Collections.unmodifiableList(copy);
     }
 
     @Override
