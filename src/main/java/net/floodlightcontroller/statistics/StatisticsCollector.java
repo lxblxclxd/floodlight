@@ -15,6 +15,7 @@ import net.floodlightcontroller.threadpool.IThreadPoolService;
 import org.projectfloodlight.openflow.protocol.*;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
+import org.projectfloodlight.openflow.protocol.match.MatchFields;
 import org.projectfloodlight.openflow.protocol.ver13.OFMeterSerializerVer13;
 import org.projectfloodlight.openflow.types.*;
 import org.slf4j.Logger;
@@ -181,11 +182,24 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
                             U64 pc = fse.getPacketCount();
                             U64 bc = fse.getByteCount();
                             fse.getMatch().get(MatchField.IN_PORT);
+                            Match m = fse.getMatch();
                             long ds = fse.getDurationSec();
-                            log.info("PACKAGECOUNT:\t" + pc.toString());
-                            log.info("BYTECOUNT:\t" + bc.toString());
-                            log.info("DURATIONSEC:\t" + String.valueOf(ds));
-                            sfs = SwitchFlowStatistics.of(e.getKey(), pc, bc, ds);
+                            log.info("SWITCH_ID:\t" + e.getKey().toString());
+                            log.info("PACKAGE_COUNT:\t" + pc.toString());
+                            log.info("BYTE_COUNT:\t" + bc.toString());
+                            log.info("DURATION_SEC:\t" + String.valueOf(ds));
+                            log.info("IPV4_SRC:\t" + m.get(MatchField.IPV4_SRC));
+                            log.info("IPV4_DST:\t" + m.get(MatchField.IPV4_DST));
+                            log.info("IPV6_SRC:\t" + m.get(MatchField.IPV6_SRC));
+                            log.info("IPV6_DST:\t" + m.get(MatchField.IPV6_DST));
+                            logIfMatchSupport(m, MatchField.TCP_FLAGS, "TCP_FLAGS");
+                            logIfMatchSupport(m, MatchField.ICMPV4_CODE, "ICMPV4_CODE");
+                            logIfMatchSupport(m, MatchField.ICMPV4_TYPE, "ICMPV4_TYPE");
+                            logIfMatchSupport(m, MatchField.ICMPV6_CODE, "ICMPV6_CODE");
+                            logIfMatchSupport(m, MatchField.ICMPV6_TYPE, "ICMPV6_TYPE");
+                            logIfMatchSupport(m, MatchField.UDP_SRC, "UDP_SRC");
+                            logIfMatchSupport(m, MatchField.UDP_DST, "UDP_DST");
+                            sfs = SwitchFlowStatistics.of(e.getKey(), pc, bc, ds, m);
 
                             if(FLOWSTATS_DIRECTION.equals(1))
                                 flowStats_1.add(sfs);
@@ -198,6 +212,10 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
                     }
                 }
             }
+        }
+        private void logIfMatchSupport(Match m, MatchField<?> type, String str){
+            if(m.supports(type))
+                log.info(str + ":\t" + m.get(type));
         }
     }
 
