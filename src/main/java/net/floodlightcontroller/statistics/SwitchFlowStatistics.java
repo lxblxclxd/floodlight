@@ -25,33 +25,30 @@ public class SwitchFlowStatistics {
     private TransportPort udpSrc;
     private TransportPort udpDst;
 
-    private double portPacketGrow_Inabsolute;
-    private long portPacketGrow_Absolute;
-    private long portByteCount;
-
-    static U64 packetCount_Mid;
-    static private U64 byteCount_Mid;
-    static private long durationSec_Mid;
-
-    private SwitchFlowStatistics() {
-    }
-
     private SwitchFlowStatistics(DatapathId d, U64 pc, U64 bc, long ds, Match m) {
         id = d;
         packetCount = pc;
         byteCount = bc;
         durationSec = ds;
-        ipv4Src = m.get(MatchField.IPV4_SRC);
-        ipv4Dst = m.get(MatchField.IPV4_DST);
-        ipv6Src = m.get(MatchField.IPV6_SRC);
-        ipv6Dst = m.get(MatchField.IPV6_DST);
-        tcpFlag = m.get(MatchField.TCP_FLAGS);
-        icmpv4Code = m.get(MatchField.ICMPV4_CODE);
-        icmpv4Type = m.get(MatchField.ICMPV4_TYPE);
-        icmpv6Code = m.get(MatchField.ICMPV6_CODE);
-        icmpv6Type = m.get(MatchField.ICMPV6_TYPE);
-        udpSrc = m.get(MatchField.UDP_SRC);
-        udpDst = m.get(MatchField.UDP_DST);
+        ipv4Src = getMatchFieldIfSupport(m, MatchField.IPV4_SRC);
+        ipv4Dst = getMatchFieldIfSupport(m, MatchField.IPV4_DST);
+        ipv6Src = getMatchFieldIfSupport(m, MatchField.IPV6_SRC);
+        ipv6Dst = getMatchFieldIfSupport(m, MatchField.IPV6_DST);
+        tcpFlag = getMatchFieldIfSupport(m, MatchField.TCP_FLAGS);
+        icmpv4Code = getMatchFieldIfSupport(m, MatchField.ICMPV4_CODE);
+        icmpv4Type = getMatchFieldIfSupport(m, MatchField.ICMPV4_TYPE);
+        icmpv6Code = getMatchFieldIfSupport(m, MatchField.ICMPV6_CODE);
+        icmpv6Type = getMatchFieldIfSupport(m, MatchField.ICMPV6_TYPE);
+        udpSrc = getMatchFieldIfSupport(m, MatchField.UDP_SRC);
+        udpDst = getMatchFieldIfSupport(m, MatchField.UDP_DST);
+    }
+
+    private <F extends OFValueType<F>> F getMatchFieldIfSupport(Match m, MatchField<F> field) {
+        if (m.supports(field)) {
+            System.out.println(m.get(field));
+            return m.get(field);
+        }
+        else return null;
     }
 
     public static SwitchFlowStatistics of(DatapathId d, U64 pc, U64 bc, long ds, Match m) {
@@ -67,7 +64,6 @@ public class SwitchFlowStatistics {
         if (m == null) {
             throw new IllegalArgumentException("Match cannot be null");
         }
-
         return new SwitchFlowStatistics(d, pc, bc, ds, m);
     }
 
@@ -103,7 +99,6 @@ public class SwitchFlowStatistics {
         return ipv6Dst;
     }
 
-
     public U16 getTcpFlag() {
         return tcpFlag;
     }
@@ -130,37 +125,6 @@ public class SwitchFlowStatistics {
 
     public TransportPort getUdpDst() {
         return udpDst;
-    }
-
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + ((id == null) ? 0 : id.hashCode());
-        //result = prime * result + ((pt == null) ? 0 : pt.hashCode());
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        SwitchFlowStatistics other = (SwitchFlowStatistics) obj;
-        if (id == null) {
-            if (other.id != null)
-                return false;
-        } else if (!id.equals(other.id))
-            return false;
-        /*if (pt == null) {
-            if (other.pt != null)
-                return false;
-        } else if (!pt.equals(other.pt))
-            return false;*/
-        return true;
     }
 
 }

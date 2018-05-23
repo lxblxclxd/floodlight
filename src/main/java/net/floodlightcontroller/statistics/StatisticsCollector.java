@@ -171,51 +171,36 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
 
         @Override
         public void run() {
-            Map<DatapathId, List<OFStatsReply>> replies = getSwitchStatistics(switchService.getAllSwitchDpids(), OFStatsType.FLOW);
-            for (Entry<DatapathId, List<OFStatsReply>> e : replies.entrySet()) {
-                for (OFStatsReply r : e.getValue()) {
-                    OFFlowStatsReply fsr = (OFFlowStatsReply) r;
-                    for (OFFlowStatsEntry fse : fsr.getEntries()) {
-                        try {
-                            //NodePortTuple npt = new NodePortTuple(e.getKey(), pse.getPortNo());
-                            SwitchFlowStatistics sfs;
-                            U64 pc = fse.getPacketCount();
-                            U64 bc = fse.getByteCount();
-                            fse.getMatch().get(MatchField.IN_PORT);
-                            Match m = fse.getMatch();
-                            long ds = fse.getDurationSec();
-                            log.info("SWITCH_ID:\t" + e.getKey().toString());
-                            log.info("PACKAGE_COUNT:\t" + pc.toString());
-                            log.info("BYTE_COUNT:\t" + bc.toString());
-                            log.info("DURATION_SEC:\t" + String.valueOf(ds));
-                            log.info("IPV4_SRC:\t" + m.get(MatchField.IPV4_SRC));
-                            log.info("IPV4_DST:\t" + m.get(MatchField.IPV4_DST));
-                            log.info("IPV6_SRC:\t" + m.get(MatchField.IPV6_SRC));
-                            log.info("IPV6_DST:\t" + m.get(MatchField.IPV6_DST));
-                            logIfMatchSupport(m, MatchField.TCP_FLAGS, "TCP_FLAGS");
-                            logIfMatchSupport(m, MatchField.ICMPV4_CODE, "ICMPV4_CODE");
-                            logIfMatchSupport(m, MatchField.ICMPV4_TYPE, "ICMPV4_TYPE");
-                            logIfMatchSupport(m, MatchField.ICMPV6_CODE, "ICMPV6_CODE");
-                            logIfMatchSupport(m, MatchField.ICMPV6_TYPE, "ICMPV6_TYPE");
-                            logIfMatchSupport(m, MatchField.UDP_SRC, "UDP_SRC");
-                            logIfMatchSupport(m, MatchField.UDP_DST, "UDP_DST");
-                            sfs = SwitchFlowStatistics.of(e.getKey(), pc, bc, ds, m);
+            log.info("start FlowStatsCollector");
+            Map<DatapathId, List<OFStatsReply>> replies;
+            try {
+                replies = getSwitchStatistics(switchService.getAllSwitchDpids(), OFStatsType.FLOW);
+                for (Entry<DatapathId, List<OFStatsReply>> e : replies.entrySet()) {
+                    for (OFStatsReply r : e.getValue()) {
+                        OFFlowStatsReply fsr = (OFFlowStatsReply) r;
+                        for (OFFlowStatsEntry fse : fsr.getEntries()) {
+                            try {
+                                SwitchFlowStatistics sfs;
+                                U64 pc = fse.getPacketCount();
+                                U64 bc = fse.getByteCount();
+                                Match m = fse.getMatch();
+                                long ds = fse.getDurationSec();
+                                sfs = SwitchFlowStatistics.of(e.getKey(), pc, bc, ds, m);
 
-                            if(FLOWSTATS_DIRECTION.equals(1))
-                                flowStats_1.add(sfs);
-                            else
-                                flowStats_0.add(sfs);
+                                if (FLOWSTATS_DIRECTION.equals(1))
+                                    flowStats_1.add(sfs);
+                                else
+                                    flowStats_0.add(sfs);
 
-                        } catch (Exception exp) {
-                            exp.printStackTrace();
+                            } catch (Exception exp) {
+                                exp.printStackTrace();
+                            }
                         }
                     }
                 }
+            } catch (Exception e) {
+                log.error(e.getMessage());
             }
-        }
-        private void logIfMatchSupport(Match m, MatchField<?> type, String str){
-            if(m.supports(type))
-                log.info(str + ":\t" + m.get(type));
         }
     }
 
@@ -334,11 +319,10 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
     @Override
     public List<SwitchFlowStatistics> getFlowStatistics() {
         List<SwitchFlowStatistics> copy = new ArrayList<>();
-        if(FLOWSTATS_DIRECTION.equals(1)) {
+        if (FLOWSTATS_DIRECTION.equals(1)) {
             copy.addAll(flowStats_1);
             flowStats_1.clear();
-        }
-        else {
+        } else {
             copy.addAll(flowStats_0);
             flowStats_0.clear();
         }
