@@ -45,7 +45,6 @@ public class SwitchFlowStatistics {
 
     private <F extends OFValueType<F>> F getMatchFieldIfSupport(Match m, MatchField<F> field) {
         if (m.supports(field)) {
-            System.out.println(m.get(field));
             return m.get(field);
         }
         else return null;
