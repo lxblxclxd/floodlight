@@ -198,6 +198,8 @@ public class StatisticsCollector implements IFloodlightModule, IStatisticsServic
                         }
                     }
                 }
+            } catch (NullPointerException e) {
+                // pass
             } catch (Exception e) {
                 log.error(e.getMessage());
             }
